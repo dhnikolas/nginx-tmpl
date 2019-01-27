@@ -1,17 +1,22 @@
 #!/bin/bash
+configPath="/etc/nginx";
+templatesPath="${configPath}/tmpl/";
 
-#Override default config path here. Set env NGINX_CONFIG_PATH.
-CONFIG_PATH=${NGINX_CONFIG_PATH:-/etc/nginx}
+if [[ -d "$templatesPath" ]]; then
+    rm -rf ${configPath}/conf.d/default.conf;
+    for f in $(find ${configPath}/tmpl/ -name '*.conf'); do
+        fullPath="${f/\/tmpl/}";
+        directoryPath="${fullPath%\/*}";
+        if [[ ! -d "$directoryPath" ]]; then
+            mkdir -p "$directoryPath";
+        fi
+        cp ${f} ${fullPath};
 
-#Replace variables ${EXAMPLE}
-function ReplaceEnvVar() {
-    grep -Rl --include="*.conf" "\${$1}" $3|xargs -r \
-        sed -i "s|\\\${$1}|$2|g"
-}
-
-# Replace all variables
-for _curVar in `env | awk -F = '{print $1}'`;do
-    ReplaceEnvVar ${_curVar} ${!_curVar} ${CONFIG_PATH}
-done
+        # Replace all variables
+        for _curVar in `env | awk -F = '{print $1}'`;do
+            sed -i "s|\\\${${_curVar}}|${!_curVar}|g" ${fullPath}
+        done
+    done
+fi
 
 nginx -g 'daemon off;'
